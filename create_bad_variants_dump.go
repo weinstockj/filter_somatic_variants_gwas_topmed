@@ -99,7 +99,7 @@ func parse(path string, store *KeyStore, wg * sync.WaitGroup) {
         }
 
         ABZ_threshold := 5.0 // about 92%
-        HWE_SLP_I_threshold := 3.0
+        HWE_SLP_I_threshold := 5.0
         SVM_threshold := -0.25
 
         alt := strings.Join(variant.Alt(), "")
