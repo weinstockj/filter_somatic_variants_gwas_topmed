@@ -54,7 +54,7 @@ func main() {
 
     log.Print("now storing to disk")
 
-    output_file, err := os.Create("likely_somatic_variants_in_freeze8.gob")
+    output_file, err := os.Create("likely_somatic_variants_in_freeze8_ABE_HWE_SVM.gob")
     if err != nil {
         panic(err)
     }
@@ -91,6 +91,8 @@ func parse(path string, store *KeyStore, wg * sync.WaitGroup) {
         panic(err)
     }
 
+    count := 0
+
     for {
         variant := rdr.Read()
 
@@ -98,15 +100,16 @@ func parse(path string, store *KeyStore, wg * sync.WaitGroup) {
             break
         }
 
-        ABZ_threshold := 5.0 // about 92%
+        ABE_lower_threshold := 0.27
+        ABE_upper_threshold := 0.73
         HWE_SLP_I_threshold := 5.0
-        SVM_threshold := -0.25
+        SVM_threshold := -0.30
 
         alt := strings.Join(variant.Alt(), "")
         key := vk.VariantKey(variant.Chromosome, uint32(variant.Pos), variant.Ref(), alt)
         filter := variant.Filter
-        r, err := variant.Info().Get("ABZ")
-        ABZ, _ := r.(float64)
+        r, err := variant.Info().Get("ABE")
+        ABE, _ := r.(float64)
         if err != nil {
             panic(err)
         }
@@ -121,7 +124,7 @@ func parse(path string, store *KeyStore, wg * sync.WaitGroup) {
         }
         SVM := r.(float64)
         //if filter == "PASS" {
-        if filter == "PASS" && (math.Abs(ABZ) >= ABZ_threshold || math.Abs(HWE_SLP_I) >= HWE_SLP_I_threshold || SVM < SVM_threshold) {
+        if filter == "PASS" && (ABE < ABE_lower_threshold || ABE > ABE_upper_threshold || math.Abs(HWE_SLP_I) >= HWE_SLP_I_threshold || SVM < SVM_threshold) {
             // fmt.Printf(
             //     "%d\t%s\t%d\t%s\t%v\t%s\t%.3f\t%.3f\t%.3f\n",
             //     key,
@@ -134,7 +137,9 @@ func parse(path string, store *KeyStore, wg * sync.WaitGroup) {
             //     HWE_SLP_I,
             //     SVM)
             store.insert(key)
+            count++
         }
     }
     log.Print("path is now complete ", path)
+    log.Print("identified ", count, " variants to include")
 }
